@@ -14,14 +14,19 @@ INPUT=$(cat)
 
 # ---------------------------------------------------------------------------
 # Check if this was a git commit. The hook matcher already filters to Bash
-# tool calls, so we only need to detect git commit in the command field.
-# The payload is single-line JSON from Claude Code, so grepping the raw
-# input for the pattern in the "command" field is reliable. False positives
-# (e.g., output that mentions "git commit") are harmless — we just offer
-# a learning exercise unnecessarily.
+# tool calls; this pattern further scopes to the "command" JSON value so
+# that other payload fields (e.g. tool output mentioning the phrase
+# "git commit") do not match. Any intermediate tokens between `git` and
+# `commit` must begin with `-` (git global options like `-c` or
+# `--no-pager`), so `git grep commit` and `git log commit` do not match
+# while `git -c user.name=me commit -m x` does. `commit` must be followed
+# by whitespace, the closing JSON quote, or a shell separator (`; & |`),
+# so `git commit-tree`, `git commits`, `git committed`, and
+# `git log --grep=commit` are rejected. `\b` is intentionally avoided —
+# BSD grep on macOS does not recognize it.
 # ---------------------------------------------------------------------------
 
-if ! echo "$INPUT" | grep -q '"command".*git.*commit'; then
+if ! echo "$INPUT" | grep -qE '"command":"[^"]*git[[:space:]]+(-[^"]*[[:space:]]+)?commit[[:space:]";&|]'; then
   exit 0
 fi
 
@@ -48,8 +53,8 @@ if [[ -f "$STATE_FILE" ]]; then
   offers=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
 fi
 
-# Stop after 2 offers per session.
-if [[ "$offers" -ge 2 ]]; then
+# Stop after 10 offers per session.
+if [[ "$offers" -ge 10 ]]; then
   exit 0
 fi
 

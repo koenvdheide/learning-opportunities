@@ -8,7 +8,7 @@ A companion plugin for [learning-opportunities](../learning-opportunities/) that
 
 The hook fires after every `Bash` tool use and checks whether the command was a `git commit`. After a successful commit, it nudges Claude to consider whether the work that was just committed is a good fit for a learning exercise — the `learning-opportunities` skill handles deciding what kind of exercise to offer based on the nature of the changes.
 
-It respects the same session limits as the skill: no more than 2 offers per session, and it stops if the user declines.
+The hook caps itself at 10 nudges per session. The `learning-opportunities` skill then applies its own session rules (stop after the user declines once; stop after 2 completed exercises).
 
 ## Installation
 
